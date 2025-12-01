@@ -1,0 +1,122 @@
+# turnos/models.py
+
+from django.db import models
+
+# ---------------------------------------------------------------------
+# Tablas de Catálogo
+# ---------------------------------------------------------------------
+
+class Area(models.Model):
+    ID_area = models.AutoField(primary_key=True)
+    Nombre_area = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name_plural = "Áreas"
+        db_table = 'area'  # Nombre exacto de la tabla en MySQL
+
+    def __str__(self):
+        return self.Nombre_area
+
+class Cargo(models.Model):
+    ID_cargo = models.AutoField(primary_key=True)
+    Nombre_cargo = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name_plural = "Cargos"
+        db_table = 'cargo' # Nombre exacto de la tabla en MySQL
+
+    def __str__(self):
+        return self.Nombre_cargo
+
+class Estado(models.Model):
+    ID_estado = models.AutoField(primary_key=True)
+    Nombre_estado = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name_plural = "Estados"
+        db_table = 'estado' # Nombre exacto de la tabla en MySQL
+
+    def __str__(self):
+        return self.Nombre_estado
+
+class Turno(models.Model):
+    ID_turno = models.AutoField(primary_key=True)
+    Tipo_turno = models.CharField(max_length=100)
+    Hora_inicio = models.TimeField()
+    Hora_fin = models.TimeField()
+
+    class Meta:
+        db_table = 'turno' # Nombre exacto de la tabla en MySQL
+
+    def __str__(self):
+        return self.Tipo_turno
+
+# ---------------------------------------------------------------------
+# Tablas Principales
+# ---------------------------------------------------------------------
+
+class Persona(models.Model):
+    # Rut es la clave primaria
+    Rut = models.CharField(max_length=15, primary_key=True) 
+    Nombre = models.CharField(max_length=100)
+    Apellido = models.CharField(max_length=100)
+    Telefono = models.CharField(max_length=20, null=True, blank=True)
+    Email = models.EmailField(max_length=100, null=True, blank=True)
+    
+    # Claves Foráneas con especificación del nombre de columna (db_column)
+    ID_area = models.ForeignKey(
+        Area, 
+        on_delete=models.CASCADE, 
+        verbose_name="Área",
+        db_column='ID_area' # ¡CORREGIDO! Nombre de la columna en MySQL
+    )
+    
+    ID_cargo = models.ForeignKey(
+        Cargo, 
+        on_delete=models.CASCADE, 
+        verbose_name="Cargo",
+        db_column='ID_cargo' # ¡CORREGIDO! Nombre de la columna en MySQL
+    )
+    
+    class Meta:
+        verbose_name_plural = "Personas"
+        db_table = 'persona' # Nombre exacto de la tabla en MySQL
+
+    def __str__(self):
+        return f"{self.Nombre} {self.Apellido} ({self.Rut})"
+
+class RegistroTurno(models.Model):
+    ID_registro = models.AutoField(primary_key=True)
+    Fecha = models.DateField()
+    
+    # Claves Foráneas con especificación del nombre de columna (db_column)
+    Rut = models.ForeignKey(
+        Persona, 
+        on_delete=models.CASCADE, 
+        verbose_name="Bombero",
+        db_column='Rut' # ¡CORREGIDO! Nombre de la columna en MySQL
+    )
+    
+    ID_turno = models.ForeignKey(
+        Turno, 
+        on_delete=models.CASCADE, 
+        verbose_name="Turno Programado",
+        db_column='ID_turno' # ¡CORREGIDO! Nombre de la columna en MySQL
+    )
+    
+    ID_estado = models.ForeignKey(
+        Estado, 
+        on_delete=models.CASCADE, 
+        verbose_name="Estado de Asistencia",
+        db_column='ID_estado' # ¡CORREGIDO! Nombre de la columna en MySQL
+    )
+    
+    Hora_llegada_real = models.TimeField(null=True, blank=True)
+    Minutos_tardanza = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = "Registros de Turnos"
+        db_table = 'registro_turno' # Nombre exacto de la tabla en MySQL
+        
+    def __str__(self):
+        return f"Registro {self.Fecha} - {self.Rut.Apellido}"

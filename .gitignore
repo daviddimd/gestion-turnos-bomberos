@@ -1,0 +1,16 @@
+# Ignorar la carpeta de archivos binarios de Python
+__pycache__/
+
+# Ignorar archivos compilados de Python
+*.pyc
+
+# Ignorar entorno virtual (si usas uno)
+venv/
+env/
+
+# Ignorar bases de datos SQLite (aunque usas MySQL, es buena práctica)
+*.sqlite3
+
+# Ignorar la configuración local de Django
+# Es VITAL no subir las credenciales de la base de datos
+gestion_turnos/settings.py

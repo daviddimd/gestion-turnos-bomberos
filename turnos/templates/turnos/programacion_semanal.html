@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Programación Semanal</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        h1 { color: #cc0000; }
+        .hoy { background-color: #ffe0b2; } /* Color para resaltar el día de hoy */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; vertical-align: top; }
+        th { background-color: #eee; }
+        .turno-item { font-size: 0.9em; margin-bottom: 5px; padding: 5px; border-radius: 3px; border-left: 5px solid #cc0000; text-align: left; }
+        .turno-nombre { font-weight: bold; }
+        .turno-tipo { font-size: 0.8em; color: #555; display: block; }
+    </style>
+</head>
+<body>
+    <h1>🗓️ Programación de Turnos</h1>
+    <h2>{{ titulo }}</h2>
+    
+    <table>
+        <thead>
+            <tr>
+                {% for dia in rango_dias %}
+                    <th class="{% if dia == hoy %}hoy{% endif %}">
+                        {{ dia|date:"l" }} ({{ dia|date:"d/m" }})
+                    </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                {% for dia, turnos_agrupados in programacion_por_dia.items %}
+                    <td class="{% if dia == hoy %}hoy{% endif %}">
+                        {% if turnos_agrupados %}
+                            {% for tipo_turno, registros in turnos_agrupados.items %}
+                                <h4>{{ tipo_turno }}</h4>
+                                {% for registro in registros %}
+                                    <div class="turno-item">
+                                        <span class="turno-nombre">
+                                            <a href="{% url 'detalle_personal' rut=registro.Rut.Rut %}">
+                                                {{ registro.Rut.Apellido }}
+                                            </a>
+                                        </span>
+                                        <span class="turno-tipo">
+                                            ({{ registro.ID_turno.Hora_inicio|time:"H:i" }} a {{ registro.ID_turno.Hora_fin|time:"H:i" }})
+                                        </span>
+                                    </div>
+                                {% endfor %}
+                            {% endfor %}
+                        {% else %}
+                            <p style="color: #999;">Sin turnos programados.</p>
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+    
+    <p style="margin-top: 20px;"><a href="{% url 'inicio' %}">← Volver al Panel de Inicio</a></p>
+
+</body>
+</html>

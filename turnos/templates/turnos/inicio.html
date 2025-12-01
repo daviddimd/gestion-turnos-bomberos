@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Turnos - {{ titulo }}</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        h1 { color: #cc0000; }
+        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .list-item { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚒 {{ titulo }}</h1>
+    <p>
+        <a href="{% url 'programacion_semanal' %}">Ir a la Programación Semanal</a></p>
+        <a href="{% url 'registrar_asistencia' %}" style="color: blue;">Registrar Asistencia</a>
+    </p>
+    <h2>Resumen Rápido (Fecha: {{ fecha_hoy|date:"d M Y" }})</h2>
+    
+    <div class="card">
+        <h3>Estadísticas de Hoy</h3>
+        <p>Total de registros de asistencia programados hoy: <strong>{{ registros_hoy }}</strong></p>
+    </div>
+
+    <div class="card">
+        <h3>Personal Registrado (Total: {{ personal|length }})</h3>
+        {% for p in personal %}
+            <div class="list-item">
+                - <a href="{% url 'detalle_personal' rut=p.Rut %}">
+                    <strong>{{ p.Nombre }} {{ p.Apellido }}</strong> (RUT: {{ p.Rut }})
+                </a> - Área: {{ p.ID_area.Nombre_area }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <h3>Tipos de Turnos Programados ({{ turnos_programados|length }})</h3>
+        {% for t in turnos_programados %}
+            <div class="list-item">
+                - {{ t.Tipo_turno }}: De {{ t.Hora_inicio|time:"H:i" }} a {{ t.Hora_fin|time:"H:i" }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <p><a href="/admin">Ir al Panel de Administración</a></p>
+
+</body>
+</html>
