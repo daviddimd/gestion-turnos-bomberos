@@ -1,14 +1,17 @@
-from django.shortcuts import render
-from .models import Persona, Turno, RegistroTurno # Importamos los modelos
+from django.shortcuts import render, get_object_or_404, redirect
+from django.db.models import Count, Sum, Q, F
+from django.db import models
+from .forms import ProgramacionMasivaForm
+from django.db import IntegrityError
+from .models import Persona, Turno, RegistroTurno, Estado
+import datetime
+import pytz
 
 def inicio_gestion(request):
     """Muestra un resumen de las personas y los turnos."""
-    
-    # Usamos el ORM para obtener datos de la BDD
     personal = Persona.objects.all().order_by('Apellido')
     turnos_programados = Turno.objects.all()
-    
-    # Contamos la asistencia de un día específico (ejemplo, hoy)
+
     import datetime
     hoy = datetime.date.today()
     registros_hoy = RegistroTurno.objects.filter(Fecha=hoy).count()
@@ -20,25 +23,12 @@ def inicio_gestion(request):
         'registros_hoy': registros_hoy,
         'fecha_hoy': hoy,
     }
-    # Renderizamos la plantilla (que crearemos en el siguiente paso)
+
     return render(request, 'turnos/inicio.html', context)
-
-# turnos/views.py (Añade esta función)
-
-from django.shortcuts import render, get_object_or_404
-from .models import Persona, Turno, RegistroTurno 
-# Nota: get_object_or_404 es para buscar un objeto o mostrar un error 404 si no existe.
-import datetime
-
-# ... (código de inicio_gestion) ...
 
 def detalle_personal(request, rut):
     """Muestra la información y el historial de turnos de una persona específica."""
-    
-    # Busca la persona por el RUT. Si no la encuentra, lanza un error 404.
     persona = get_object_or_404(Persona, Rut=rut)
-    
-    # Busca todos los registros de turnos asociados a ese RUT, ordenados por fecha descendente
     historial_turnos = RegistroTurno.objects.filter(Rut=persona).order_by('-Fecha')
     
     context = {
@@ -49,36 +39,23 @@ def detalle_personal(request, rut):
     
     return render(request, 'turnos/detalle_personal.html', context)
 
-from django.shortcuts import render, get_object_or_404
-from .models import Persona, Turno, RegistroTurno
-import datetime
-
-# ... (código de inicio_gestion y detalle_personal) ...
 
 def programacion_semanal(request):
     """Muestra la programación de turnos para la semana actual."""
-    
-    # 1. Calcular el rango de la semana actual (Lunes a Domingo)
     hoy = datetime.date.today()
-    # weekday() devuelve 0 para lunes, 6 para domingo
     dia_inicio_semana = hoy - datetime.timedelta(days=hoy.weekday())
     dia_fin_semana = dia_inicio_semana + datetime.timedelta(days=6)
     
     rango_dias = [dia_inicio_semana + datetime.timedelta(days=i) for i in range(7)]
 
-    # 2. Obtener todos los registros de turno para esa semana
     registros_semana = RegistroTurno.objects.filter(
-        Fecha__gte=dia_inicio_semana,  # Mayor o igual que el día de inicio
-        Fecha__lte=dia_fin_semana      # Menor o igual que el día de fin
+        Fecha__gte=dia_inicio_semana,  
+        Fecha__lte=dia_fin_semana      
     ).order_by('Fecha', 'ID_turno__Hora_inicio')
 
-    # 3. Organizar los registros por día y por tipo de turno para la plantilla
     programacion_por_dia = {}
     for dia in rango_dias:
-        # Filtra los registros para el día actual
         registros_del_dia = [r for r in registros_semana if r.Fecha == dia]
-        
-        # Agrupa por tipo de turno (ej. Operador Radial Día, Oficina)
         turnos_agrupados = {}
         for registro in registros_del_dia:
             tipo_turno = registro.ID_turno.Tipo_turno
@@ -97,16 +74,8 @@ def programacion_semanal(request):
     
     return render(request, 'turnos/programacion_semanal.html', context)
 
-# turnos/views.py (Añade esta función)
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q # Importamos Q para búsquedas complejas
-from .models import Persona, Turno, RegistroTurno, Estado
-import datetime
-import pytz # Para manejar zonas horarias, necesario para datetime
 
-# Define la zona horaria (ajusta a la zona de tu país si es diferente)
-# América/Santiago es común en Chile, si estás en otra zona, ajústala
 ZONA_HORARIA = pytz.timezone('America/Santiago') 
 
 def registrar_asistencia(request):
@@ -118,16 +87,13 @@ def registrar_asistencia(request):
         rut_ingresado = request.POST.get('rut').strip()
         
         try:
-            # 1. Verificar si la persona existe
             persona = Persona.objects.get(Rut=rut_ingresado)
         except Persona.DoesNotExist:
             context['mensaje'] = "Error: El RUT ingresado no se encuentra en el registro de personal."
             context['clase'] = 'error'
             return render(request, 'turnos/registrar_asistencia.html', context)
-        
-        # 2. Buscar un turno programado para hoy (RegistroTurno)
+
         hoy = datetime.date.today()
-        # Filtra por la persona y por la fecha de hoy
         registro = RegistroTurno.objects.filter(Rut=persona, Fecha=hoy).first()
 
         if not registro:
@@ -135,13 +101,10 @@ def registrar_asistencia(request):
             context['clase'] = 'error'
             return render(request, 'turnos/registrar_asistencia.html', context)
         
-        # 3. Procesar la hora de llegada
         hora_actual = datetime.datetime.now(ZONA_HORARIA).time()
         
-        # La hora de inicio programada (de la tabla Turno)
         hora_inicio_programada = registro.ID_turno.Hora_inicio
         
-        # Comparamos la hora (tenemos que hacer la comparación de tiempo de forma segura)
         llegada = datetime.datetime.combine(hoy, hora_actual)
         programada = datetime.datetime.combine(hoy, hora_inicio_programada)
         diferencia = llegada - programada
@@ -150,25 +113,116 @@ def registrar_asistencia(request):
         estado_id = 1 # 1 es 'Normal'
         
         if diferencia > datetime.timedelta(minutes=0):
-            # Hay tardanza
             minutos_tardanza = int(diferencia.total_seconds() / 60)
-            
-            if minutos_tardanza > 5: # Si se considera atraso después de 5 minutos
-                 estado_id = 2 # 2 es 'Atraso'
+            if minutos_tardanza > 5:
+                 estado_id = 2
             else:
-                 estado_id = 1 # Menos de 5 minutos se considera 'Normal'
+                 estado_id = 1
 
-        # 4. Actualizar el registro
         registro.Hora_llegada_real = hora_actual
         registro.Minutos_tardanza = minutos_tardanza
-        registro.ID_estado = Estado.objects.get(ID_estado=estado_id) # Obtenemos el objeto Estado
+        registro.ID_estado = Estado.objects.get(ID_estado=estado_id)
         registro.save()
         
         context['mensaje'] = f"✅ Asistencia registrada para {persona.Nombre} {persona.Apellido} ({registro.ID_turno.Tipo_turno}). Estado: {registro.ID_estado.Nombre_estado}."
         context['clase'] = 'exito'
-        
-        # Redirigir para limpiar el POST y evitar doble envío
+
         return render(request, 'turnos/registrar_asistencia.html', context)
-    
-    # Si es una petición GET, simplemente muestra el formulario
+
     return render(request, 'turnos/registrar_asistencia.html', context)
+
+
+def reporte_asistencia(request):
+    """Muestra un reporte consolidado de asistencia basado en un rango de fechas."""
+
+    hoy = datetime.date.today()
+    fecha_inicio_defecto = hoy.replace(day=1) 
+    fecha_fin_defecto = hoy
+    
+    fecha_inicio_str = request.GET.get('fecha_inicio', str(fecha_inicio_defecto))
+    fecha_fin_str = request.GET.get('fecha_fin', str(fecha_fin_defecto))
+    
+    try:
+        fecha_inicio = datetime.datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+        fecha_fin = datetime.datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+    except ValueError:
+        fecha_inicio = fecha_inicio_defecto
+        fecha_fin = fecha_fin_defecto
+
+    personal = Persona.objects.all().order_by('Apellido')
+    
+    reporte_consolidado = []
+
+    for persona in personal:
+        registros = RegistroTurno.objects.filter(
+            Rut=persona, 
+            Fecha__range=[fecha_inicio, fecha_fin]
+        )
+
+        estadisticas = registros.aggregate(
+            total_turnos=Count('ID_registro'),
+            normal=Count('ID_registro', filter=models.Q(ID_estado__ID_estado=1)),
+            atraso=Count('ID_registro', filter=models.Q(ID_estado__ID_estado=2)),
+            ausente=Count('ID_registro', filter=models.Q(ID_estado__ID_estado=3)),
+            minutos_tardanza_total=Sum('Minutos_tardanza')
+        ) 
+        reporte_consolidado.append({
+            'persona': persona,
+            'stats': estadisticas,
+        })
+
+    context = {
+        'titulo': 'Reporte Consolidado de Asistencia',
+        'reporte_consolidado': reporte_consolidado,
+        'fecha_inicio_str': fecha_inicio_str,
+        'fecha_fin_str': fecha_fin_str,
+    }
+    
+    return render(request, 'turnos/reporte_asistencia.html', context)
+
+def programar_turnos_masiva(request):
+    """Vista para generar multiples registros de turno en un rango de fechas."""
+    
+    mensaje = None
+    
+    if request.method == 'POST':
+        form = ProgramacionMasivaForm(request.POST)
+        
+        if form.is_valid():
+            persona = form.cleaned_data['persona']
+            tipo_turno = form.cleaned_data['tipo_turno']
+            fecha_inicio = form.cleaned_data['fecha_inicio']
+            fecha_fin = form.cleaned_data['fecha_fin']
+            diferencia = fecha_fin - fecha_inicio
+            dias_programados = 0
+            
+            for i in range(diferencia.days + 1):
+                fecha_actual = fecha_inicio + datetime.timedelta(days=i)
+                
+                try:
+                    RegistroTurno.objects.create(
+                        Fecha=fecha_actual,
+                        Rut=persona,
+                        ID_turno=tipo_turno,
+                        ID_estado_id=1 
+                    )
+                    dias_programados += 1
+                except IntegrityError:
+                   
+                    pass 
+
+            mensaje = f"✅ Éxito: Se programaron {dias_programados} turnos para {persona.Apellido} ({tipo_turno.Tipo_turno}) del {fecha_inicio} al {fecha_fin}."
+
+            form = ProgramacionMasivaForm() 
+            
+    else:
+
+        form = ProgramacionMasivaForm()
+
+    context = {
+        'titulo': 'Programación Masiva de Turnos',
+        'form': form,
+        'mensaje': mensaje
+    }
+    
+    return render(request, 'turnos/programacion_masiva.html', context)

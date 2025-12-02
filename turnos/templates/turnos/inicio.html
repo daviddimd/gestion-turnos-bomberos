@@ -15,8 +15,15 @@
     <p>
         <a href="{% url 'programacion_semanal' %}">Ir a la Programación Semanal</a></p>
         <a href="{% url 'registrar_asistencia' %}" style="color: blue;">Registrar Asistencia</a>
+        <a href="{% url 'reporte_asistencia' %}">Generar Reporte</a>
     </p>
     <h2>Resumen Rápido (Fecha: {{ fecha_hoy|date:"d M Y" }})</h2>
+    <hr>
+    <h3>Herramientas Administrativas</h3>
+    <p>
+        <a href="{% url 'programacion_masiva' %}">🛠️ Programación Masiva de Turnos</a> |
+        <a href="/admin">Panel de Administración de Datos</a>
+    </p>
     
     <div class="card">
         <h3>Estadísticas de Hoy</h3>

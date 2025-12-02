@@ -1,10 +1,4 @@
-# turnos/models.py
-
 from django.db import models
-
-# ---------------------------------------------------------------------
-# Tablas de Catálogo
-# ---------------------------------------------------------------------
 
 class Area(models.Model):
     ID_area = models.AutoField(primary_key=True)
@@ -12,7 +6,7 @@ class Area(models.Model):
 
     class Meta:
         verbose_name_plural = "Áreas"
-        db_table = 'area'  # Nombre exacto de la tabla en MySQL
+        db_table = 'area'  
 
     def __str__(self):
         return self.Nombre_area
@@ -23,7 +17,7 @@ class Cargo(models.Model):
 
     class Meta:
         verbose_name_plural = "Cargos"
-        db_table = 'cargo' # Nombre exacto de la tabla en MySQL
+        db_table = 'cargo' 
 
     def __str__(self):
         return self.Nombre_cargo
@@ -34,7 +28,7 @@ class Estado(models.Model):
 
     class Meta:
         verbose_name_plural = "Estados"
-        db_table = 'estado' # Nombre exacto de la tabla en MySQL
+        db_table = 'estado' 
 
     def __str__(self):
         return self.Nombre_estado
@@ -46,14 +40,11 @@ class Turno(models.Model):
     Hora_fin = models.TimeField()
 
     class Meta:
-        db_table = 'turno' # Nombre exacto de la tabla en MySQL
+        db_table = 'turno'
 
     def __str__(self):
         return self.Tipo_turno
 
-# ---------------------------------------------------------------------
-# Tablas Principales
-# ---------------------------------------------------------------------
 
 class Persona(models.Model):
     # Rut es la clave primaria
@@ -63,24 +54,23 @@ class Persona(models.Model):
     Telefono = models.CharField(max_length=20, null=True, blank=True)
     Email = models.EmailField(max_length=100, null=True, blank=True)
     
-    # Claves Foráneas con especificación del nombre de columna (db_column)
     ID_area = models.ForeignKey(
         Area, 
         on_delete=models.CASCADE, 
         verbose_name="Área",
-        db_column='ID_area' # ¡CORREGIDO! Nombre de la columna en MySQL
+        db_column='ID_area' 
     )
     
     ID_cargo = models.ForeignKey(
         Cargo, 
         on_delete=models.CASCADE, 
         verbose_name="Cargo",
-        db_column='ID_cargo' # ¡CORREGIDO! Nombre de la columna en MySQL
+        db_column='ID_cargo'
     )
     
     class Meta:
         verbose_name_plural = "Personas"
-        db_table = 'persona' # Nombre exacto de la tabla en MySQL
+        db_table = 'persona'
 
     def __str__(self):
         return f"{self.Nombre} {self.Apellido} ({self.Rut})"
@@ -89,26 +79,25 @@ class RegistroTurno(models.Model):
     ID_registro = models.AutoField(primary_key=True)
     Fecha = models.DateField()
     
-    # Claves Foráneas con especificación del nombre de columna (db_column)
     Rut = models.ForeignKey(
         Persona, 
         on_delete=models.CASCADE, 
         verbose_name="Bombero",
-        db_column='Rut' # ¡CORREGIDO! Nombre de la columna en MySQL
+        db_column='Rut'
     )
     
     ID_turno = models.ForeignKey(
         Turno, 
         on_delete=models.CASCADE, 
         verbose_name="Turno Programado",
-        db_column='ID_turno' # ¡CORREGIDO! Nombre de la columna en MySQL
+        db_column='ID_turno'
     )
     
     ID_estado = models.ForeignKey(
         Estado, 
         on_delete=models.CASCADE, 
         verbose_name="Estado de Asistencia",
-        db_column='ID_estado' # ¡CORREGIDO! Nombre de la columna en MySQL
+        db_column='ID_estado'
     )
     
     Hora_llegada_real = models.TimeField(null=True, blank=True)
@@ -116,7 +105,7 @@ class RegistroTurno(models.Model):
 
     class Meta:
         verbose_name_plural = "Registros de Turnos"
-        db_table = 'registro_turno' # Nombre exacto de la tabla en MySQL
+        db_table = 'registro_turno'
         
     def __str__(self):
         return f"Registro {self.Fecha} - {self.Rut.Apellido}"
