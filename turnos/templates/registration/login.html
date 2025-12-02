@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Iniciar Sesión</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; text-align: center; background-color: #f4f4f4; }
+        .login-card { max-width: 350px; margin: 50px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #cc0000; margin-bottom: 20px; }
+        input { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #cc0000; color: white; padding: 10px; border: none; cursor: pointer; width: 100%; font-size: 1em; border-radius: 4px; }
+        .errorlist { color: red; list-style: none; padding: 0; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>Iniciar Sesión (Sistema de Turnos)</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+                <ul class="errorlist">
+                    <li>Rut o contraseña incorrectos.</li>
+                </ul>
+            {% endif %}
+
+            {{ form.as_p }}
+            <button type="submit">Ingresar</button>
+        </form>
+    </div>
+    
+    <p>Solo un administrador puede acceder a esta sección</p>
+</body>
+</html>

@@ -1,0 +1,67 @@
+{% extends 'turnos/base.html' %} <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ titulo }}</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        h1 { color: #cc0000; }
+        .info-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; background-color: #f9f9f9; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #eee; }
+        .atraso { color: orange; font-weight: bold; }
+        .ausente { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>👤 {{ titulo }}</h1>
+    
+    <div class="info-card">
+        <h3>Mis Datos</h3>
+        <p><strong>Nombre de Usuario (RUT):</strong> {{ user.username }}</p>
+        <p><strong>Nombre Completo:</strong> {{ persona.Nombre }} {{ persona.Apellido }}</p>
+        <p><strong>Área:</strong> {{ persona.ID_area.Nombre_area }}</p>
+        <p><strong>Cargo:</strong> {{ persona.ID_cargo.Nombre_cargo }}</p>
+    </div>
+
+    <h2>Mi Historial de Asistencia (Total: {{ historial_turnos|length }})</h2>
+    
+    {% if historial_turnos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo de Turno</th>
+                    <th>Estado de Asistencia</th>
+                    <th>Hora de Llegada Real</th>
+                    <th>Tardanza (Min)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in historial_turnos %}
+                <tr>
+                    <td>{{ registro.Fecha|date:"d M Y" }}</td>
+                    <td>{{ registro.ID_turno.Tipo_turno }}</td>
+                    <td>
+                        {{ registro.ID_estado.Nombre_estado }}
+                        {% if registro.ID_estado.Nombre_estado == 'Atraso' %} 
+                            <span class="atraso">🚨</span>
+                        {% elif registro.ID_estado.Nombre_estado == 'Ausente' %}
+                            <span class="ausente">❌</span>
+                        {% endif %}
+                    </td>
+                    <td>{% if registro.Hora_llegada_real %}{{ registro.Hora_llegada_real|time:"H:i" }}{% else %}N/A{% endif %}</td>
+                    <td>{% if registro.Minutos_tardanza %}{{ registro.Minutos_tardanza }}{% else %}0{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No tienes registros de turnos en el sistema.</p>
+    {% endif %}
+
+    <p style="margin-top: 20px;"><a href="{% url 'logout' %}">Cerrar Sesión</a></p>
+
+</body>
+</html>

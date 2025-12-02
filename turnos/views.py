@@ -4,6 +4,7 @@ from django.db import models
 from .forms import ProgramacionMasivaForm
 from django.db import IntegrityError
 from .models import Persona, Turno, RegistroTurno, Estado
+from django.contrib.auth.decorators import login_required, user_passes_test
 import datetime
 import pytz
 
@@ -131,7 +132,8 @@ def registrar_asistencia(request):
 
     return render(request, 'turnos/registrar_asistencia.html', context)
 
-
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def reporte_asistencia(request):
     """Muestra un reporte consolidado de asistencia basado en un rango de fechas."""
 
@@ -180,6 +182,8 @@ def reporte_asistencia(request):
     
     return render(request, 'turnos/reporte_asistencia.html', context)
 
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def programar_turnos_masiva(request):
     """Vista para generar multiples registros de turno en un rango de fechas."""
     
@@ -226,3 +230,25 @@ def programar_turnos_masiva(request):
     }
     
     return render(request, 'turnos/programacion_masiva.html', context)
+
+@login_required
+def mi_perfil(request):
+    """Muestra el historial de turnos de la persona logueada."""
+
+    usuario_django = request.user
+    
+    try: 
+        rut_usuario = usuario_django.username
+        persona = Persona.objects.get(Rut=rut_usuario)
+        historial_turnos = RegistroTurno.objects.filter(Rut=persona).order_by('-Fecha')
+        
+    except Persona.DoesNotExist:
+        return render(request, 'turnos/error_perfil.html', {'mensaje': 'Su usuario no está asociado a ningún bombero en el registro.'})
+
+    context = {
+        'persona': persona,
+        'historial_turnos': historial_turnos,
+        'titulo': f'Mi Perfil y Historial de {persona.Nombre}',
+    }
+    
+    return render(request, 'turnos/mi_perfil.html', context)
