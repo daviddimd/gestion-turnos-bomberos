@@ -1,0 +1,15 @@
+{% extends 'turnos/base.html' %}
+{% block title %}Error de Perfil{% endblock %}
+
+{% block content %}
+    <div style="text-align: center; margin-top: 50px;">
+        <h2 style="color: red;">❌ Error al Cargar Perfil</h2>
+        <p style="font-size: 1.2em;">{{ mensaje }}</p>
+        
+        <p><strong>Usuario con el que intentó acceder:</strong> {{ user.username }}</p>
+        
+        <p>
+            <a href="{% url 'logout' %}">Intentar con otro usuario (Cerrar Sesión)</a>
+        </p>
+    </div>
+{% endblock content %}

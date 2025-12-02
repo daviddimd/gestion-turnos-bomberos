@@ -14,14 +14,12 @@
 </head>
 <body>
     <div class="login-card">
-        <h1>Iniciar Sesión (Sistema de Turnos)</h1>
+        <h1>Iniciar Sesión</h1>
         
         <form method="post">
-            {% csrf_token %}
-            
-            {% if form.errors %}
+            {% csrf_token %} {% if form.errors %}
                 <ul class="errorlist">
-                    <li>Rut o contraseña incorrectos.</li>
+                    <li>Nombre de usuario o contraseña incorrectos.</li>
                 </ul>
             {% endif %}
 
@@ -30,6 +28,6 @@
         </form>
     </div>
     
-    <p>Solo un administrador puede acceder a esta sección</p>
+    <p>Usa tus credenciales.</p>
 </body>
 </html>

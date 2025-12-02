@@ -1,22 +1,6 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ titulo }}</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; }
-        h1 { color: #cc0000; }
-        .filter-form { background-color: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .filter-form label, .filter-form input { margin-right: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #eee; text-align: center; }
-        .data-center { text-align: center; font-weight: bold; }
-        .normal { color: green; }
-        .atraso { color: orange; }
-        .ausente { color: red; }
-    </style>
-</head>
+{% extends 'turnos/base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
 <body>
     <h1>📈 {{ titulo }}</h1>
 
@@ -73,6 +57,4 @@
     {% endif %}
     
     <p style="margin-top: 20px;"><a href="{% url 'inicio' %}">← Volver al Panel de Inicio</a></p>
-
-</body>
-</html>
+{% endblock content %}

@@ -9,4 +9,7 @@ urlpatterns = [
     path('reporte/asistencia/', views.reporte_asistencia, name='reporte_asistencia'),
     path('programacion/masiva/', views.programar_turnos_masiva, name='programacion_masiva'),
     path('mi-perfil/', views.mi_perfil, name='mi_perfil'),
+    path('registro/eliminar/<int:id_registro>/', views.eliminar_registro_turno, name='eliminar_registro_turno'),
+    path('programacion/', views.programacion_semanal, name='programacion_semanal_actual'),
+    path('programacion/<str:fecha_str>/', views.programacion_semanal, name='programacion_semanal'),
 ]

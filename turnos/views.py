@@ -1,30 +1,82 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Count, Sum, Q, F
+from django.db.models import Count, Sum, Min, Q, F
 from django.db import models
 from .forms import ProgramacionMasivaForm
 from django.db import IntegrityError
 from .models import Persona, Turno, RegistroTurno, Estado
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
+from django.contrib.auth import authenticate
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseRedirect
 import datetime
 import pytz
 
-def inicio_gestion(request):
-    """Muestra un resumen de las personas y los turnos."""
-    personal = Persona.objects.all().order_by('Apellido')
-    turnos_programados = Turno.objects.all()
+def get_greeting(hour):
+    if 6 <= hour < 12:
+        return "Buenos días"
+    elif 12 <= hour < 19:
+        return "Buenas tardes"
+    else:
+        return "Buenas noches"
 
-    import datetime
-    hoy = datetime.date.today()
-    registros_hoy = RegistroTurno.objects.filter(Fecha=hoy).count()
+@login_required
+def inicio_gestion(request):
+    """Muestra un resumen del sistema, el saludo personalizado y los turnos de hoy."""
+    
+    # Asegúrate de tener: import datetime, import pytz
+    ZONA_HORARIA = pytz.timezone('America/Santiago') 
+
+    # --- Datos de Tiempo Actual y Saludo ---
+    ahora = datetime.datetime.now(ZONA_HORARIA)
+    hoy = ahora.date()
+    hora_actual_time = ahora.time()
+    
+    saludo = get_greeting(ahora.hour) # Calcula Buenos días/tardes/noches
+
+    # --- Obtener Nombre del Operador ---
+    # Asumimos que el username del usuario logueado es el RUT de la Persona
+    try:
+        operador = Persona.objects.get(Rut=request.user.username)
+        # Usamos solo el nombre de pila para el saludo
+        nombre_usuario = operador.Nombre 
+    except Persona.DoesNotExist:
+        # Fallback si no se encuentra el perfil Persona (usa el nombre del usuario Django)
+        nombre_usuario = request.user.first_name if request.user.first_name else request.user.get_username()
+        
+    # --- Lógica de Turno Siguiente y Activo ---
+    registros_hoy = RegistroTurno.objects.filter(Fecha=hoy).order_by('ID_turno__Hora_inicio')
+
+    siguiente_turno_qs = registros_hoy.filter(
+        ID_turno__Hora_inicio__gte=hora_actual_time
+    ).first()
+
+    turno_activo = RegistroTurno.objects.filter(
+        Fecha=hoy,
+        Hora_llegada_real__isnull=False 
+    ).first()
+    
+    # --- Datos de Resumen ---
+    personal = Persona.objects.all().order_by('Apellido')
+    turnos_programados_tipos = Turno.objects.all()
 
     context = {
         'titulo': 'Panel de Gestión de Turnos',
         'personal': personal,
-        'turnos_programados': turnos_programados,
-        'registros_hoy': registros_hoy,
+        'turnos_programados_tipos': turnos_programados_tipos,
+        
+        # Nuevas variables de saludo
+        'saludo': saludo,
+        'nombre_usuario': nombre_usuario,
+        
+        # Datos de tiempo y turnos
+        'hora_actual': ahora,
         'fecha_hoy': hoy,
+        'siguiente_turno': siguiente_turno_qs,
+        'turno_activo': turno_activo,
+        'registros_hoy': registros_hoy,
     }
-
+    
     return render(request, 'turnos/inicio.html', context)
 
 def detalle_personal(request, rut):
@@ -252,3 +304,129 @@ def mi_perfil(request):
     }
     
     return render(request, 'turnos/mi_perfil.html', context)
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def eliminar_registro_turno(request, id_registro):
+    """Elimina un registro de turno específico por su ID."""
+
+    registro = get_object_or_404(RegistroTurno, ID_registro=id_registro)
+    url_anterior = request.META.get('HTTP_REFERER', '/')
+    registro.delete()
+    messages.success(request, f'Registro de turno ID {id_registro} eliminado correctamente.')
+    return HttpResponseRedirect(url_anterior)
+
+def programacion_semanal(request, fecha_str=None):
+    """Muestra la programacion de turnos para la semana dada, o la actual."""
+    if fecha_str:
+        try:
+            fecha_referencia = datetime.datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except ValueError:
+            fecha_referencia = datetime.date.today()
+    else:
+        fecha_referencia = datetime.date.today()
+
+    dia_inicio_semana = fecha_referencia - datetime.timedelta(days=fecha_referencia.weekday())
+    dia_fin_semana = dia_inicio_semana + datetime.timedelta(days=6)
+    
+    rango_dias = [dia_inicio_semana + datetime.timedelta(days=i) for i in range(7)]
+
+    semana_anterior = dia_inicio_semana - datetime.timedelta(days=7)
+    semana_siguiente = dia_inicio_semana + datetime.timedelta(days=7)
+
+    registros_semana = RegistroTurno.objects.filter(
+        Fecha__gte=dia_inicio_semana,  
+        Fecha__lte=dia_fin_semana      
+    ).order_by('Fecha', 'ID_turno__Hora_inicio')
+
+    programacion_por_dia = {}
+    for dia in rango_dias:
+        registros_del_dia = [r for r in registros_semana if r.Fecha == dia]
+        turnos_agrupados = {}
+        for registro in registros_del_dia:
+            tipo_turno = registro.ID_turno.Tipo_turno
+            if tipo_turno not in turnos_agrupados:
+                turnos_agrupados[tipo_turno] = []
+            turnos_agrupados[tipo_turno].append(registro)
+
+        programacion_por_dia[dia] = turnos_agrupados
+        
+    context = {
+        'titulo': f'Programación Semanal ({dia_inicio_semana} al {dia_fin_semana})',
+        'rango_dias': rango_dias,
+        'programacion_por_dia': programacion_por_dia,
+        'hoy': datetime.date.today(),
+        'semana_anterior': semana_anterior.strftime('%Y-%m-%d'),
+        'semana_siguiente': semana_siguiente.strftime('%Y-%m-%d'),
+    }
+    
+    return render(request, 'turnos/programacion_semanal.html', context)
+
+ZONA_HORARIA = pytz.timezone('America/Santiago')
+
+def registrar_asistencia(request):
+    """Muestra el formulario y procesa el registro de asistencia con verificación de clave."""
+    
+    context = {'mensaje': None, 'clase': ''}
+    
+    if request.method == 'POST':
+        rut_ingresado = request.POST.get('rut').strip()
+        clave_ingresada = request.POST.get('password') # Recibimos la nueva clave
+        
+        # 1. AUTENTICACIÓN: Verificar RUT y Clave de Django User
+        user = authenticate(request, username=rut_ingresado, password=clave_ingresada)
+        
+        if user is None:
+            context['mensaje'] = "Error: RUT o Clave de acceso incorrectos. Verifique sus credenciales."
+            context['clase'] = 'error'
+            return render(request, 'turnos/registrar_asistencia.html', context)
+            
+        # --- Si la autenticación es exitosa, procedemos con el registro ---
+        
+        try:
+            # 2. Verificar si la persona existe en la tabla de bomberos
+            persona = Persona.objects.get(Rut=rut_ingresado)
+        except Persona.DoesNotExist:
+            context['mensaje'] = "Error: El usuario autenticado no está asociado a un registro de bombero."
+            context['clase'] = 'error'
+            return render(request, 'turnos/registrar_asistencia.html', context)
+        
+        # 3. Buscar un turno programado para hoy (RegistroTurno)
+        hoy = datetime.date.today()
+        registro = RegistroTurno.objects.filter(Rut=persona, Fecha=hoy).first()
+
+        if not registro:
+            context['mensaje'] = f"Error: No hay turno programado para {persona.Nombre} hoy ({hoy})."
+            context['clase'] = 'error'
+            return render(request, 'turnos/registrar_asistencia.html', context)
+        
+        # 4. Procesar la hora de llegada y tardanza (Lógica ya existente)
+        ZONA_HORARIA = pytz.timezone('America/Santiago') 
+        hora_actual = datetime.datetime.now(ZONA_HORARIA).time()
+        hora_inicio_programada = registro.ID_turno.Hora_inicio
+        
+        llegada = datetime.datetime.combine(hoy, hora_actual)
+        programada = datetime.datetime.combine(hoy, hora_inicio_programada)
+        diferencia = llegada - programada
+
+        minutos_tardanza = 0
+        estado_id = 1 
+        
+        if diferencia > datetime.timedelta(minutes=0):
+            minutos_tardanza = int(diferencia.total_seconds() / 60)
+            
+            if minutos_tardanza > 5: # Tolerancia de 5 minutos
+                 estado_id = 2 # 2 es 'Atraso'
+
+        # 5. Actualizar el registro
+        registro.Hora_llegada_real = hora_actual
+        registro.Minutos_tardanza = minutos_tardanza
+        registro.ID_estado = Estado.objects.get(ID_estado=estado_id) 
+        registro.save()
+        
+        # 6. Redirigir al perfil del usuario autenticado
+        messages.success(request, f"✅ Asistencia registrada para {persona.Nombre} {persona.Apellido}. Estado: {registro.ID_estado.Nombre_estado}.")
+        return redirect('mi_perfil') # Redirigimos a su perfil para mostrar el historial actualizado
+    
+    # Si es una petición GET, simplemente muestra el formulario
+    return render(request, 'turnos/registrar_asistencia.html', context)

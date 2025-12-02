@@ -1,19 +1,6 @@
-{% extends 'turnos/base.html' %} <!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ titulo }}</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; }
-        h1 { color: #cc0000; }
-        .info-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; background-color: #f9f9f9; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #eee; }
-        .atraso { color: orange; font-weight: bold; }
-        .ausente { color: red; font-weight: bold; }
-    </style>
-</head>
+{% extends 'turnos/base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
 <body>
     <h1>👤 {{ titulo }}</h1>
     
@@ -62,6 +49,4 @@
     {% endif %}
 
     <p style="margin-top: 20px;"><a href="{% url 'logout' %}">Cerrar Sesión</a></p>
-
-</body>
-</html>
+{% endblock content %}
