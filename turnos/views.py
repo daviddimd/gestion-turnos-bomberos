@@ -351,36 +351,71 @@ def programacion_semanal(request, fecha_str=None):
 
 ZONA_HORARIA = pytz.timezone('America/Santiago')
 
+@login_required # Mantenemos esta protección si no es registro rápido
 def registrar_asistencia(request):
-    """Muestra el formulario y procesa el registro de asistencia con verificación de clave."""
+    """Procesa el registro de asistencia, asumiendo el RUT del usuario logueado."""
     
     context = {'mensaje': None, 'clase': ''}
     
-    if request.method == 'POST':
-        rut_ingresado = request.POST.get('rut').strip()
-        clave_ingresada = request.POST.get('password')
-        user = authenticate(request, username=rut_ingresado, password=clave_ingresada)
+    # Define la zona horaria (Asegúrate de que esta coincida con settings.py)
+    ZONA_HORARIA = pytz.timezone('America/Santiago') 
+    hoy = datetime.date.today()
+    
+    # 1. Determinar el RUT a usar
+    if request.user.is_authenticated:
+        # Si el usuario está logueado, usamos su username (que es el RUT)
+        rut_usar = request.user.username
         
-        if user is None:
-            context['mensaje'] = "Error: RUT o Clave de acceso incorrectos. Verifique sus credenciales."
-            context['clase'] = 'error'
+        # El formulario en esta vista ya no es útil si está logueado, redirigimos a una vista simple de registro
+        # Por ahora, solo procesaremos el GET para redirigir si está logueado.
+        if request.method == 'GET':
+            # Vamos a crear una vista simple para el registro de un toque
+            return redirect('registrar_asistencia_logueado')
+            
+    else:
+        # Si NO está logueado, debe usar el formulario (rut y clave)
+        if request.method == 'POST':
+            rut_usar = request.POST.get('rut').strip()
+            clave_ingresada = request.POST.get('password')
+            
+            # 1.1. Autenticación si no está logueado (La lógica ya existente)
+            user = authenticate(request, username=rut_usar, password=clave_ingresada)
+            
+            if user is None:
+                context['mensaje'] = "Error: RUT o Clave de acceso incorrectos. Verifique sus credenciales."
+                context['clase'] = 'error'
+                return render(request, 'turnos/registrar_asistencia.html', context)
+        else:
+            # Mostrar formulario si no hay login
             return render(request, 'turnos/registrar_asistencia.html', context)
-        
-        try:
-            persona = Persona.objects.get(Rut=rut_ingresado)
-        except Persona.DoesNotExist:
-            context['mensaje'] = "Error: El usuario autenticado no está asociado a un registro de bombero."
-            context['clase'] = 'error'
-            return render(request, 'turnos/registrar_asistencia.html', context)
-        
-        hoy = datetime.date.today()
+    
+    # (El código para procesar la asistencia debe ir en registrar_asistencia_logueado)
+    
+    # Si llegó aquí sin POST y sin login, mostrar el formulario (esto solo ocurre si el decorador falla)
+    return render(request, 'turnos/registrar_asistencia.html', context)
+
+
+# -------------------------------------------------------------
+# 💡 NUEVA VISTA: REGISTRO DE UN TOQUE (Solo para usuarios logueados)
+# -------------------------------------------------------------
+
+@login_required
+def registrar_asistencia_logueado(request):
+    """Vista de un toque para registrar la asistencia del usuario logueado."""
+    
+    rut_usar = request.user.username
+    hoy = datetime.date.today()
+    
+    try:
+        # 1. Verificar si la persona existe y tiene turno
+        persona = get_object_or_404(Persona, Rut=rut_usar)
         registro = RegistroTurno.objects.filter(Rut=persona, Fecha=hoy).first()
 
         if not registro:
-            context['mensaje'] = f"Error: No hay turno programado para {persona.Nombre} hoy ({hoy})."
-            context['clase'] = 'error'
-            return render(request, 'turnos/registrar_asistencia.html', context)
+            messages.error(request, f"Error: No hay turno programado para {persona.Nombre} hoy ({hoy}).")
+            return redirect('mi_perfil') # Redirige al perfil si no hay turno
         
+        # 2. Lógica de tardanza
         ZONA_HORARIA = pytz.timezone('America/Santiago') 
         hora_actual = datetime.datetime.now(ZONA_HORARIA).time()
         hora_inicio_programada = registro.ID_turno.Hora_inicio
@@ -394,16 +429,20 @@ def registrar_asistencia(request):
         
         if diferencia > datetime.timedelta(minutes=0):
             minutos_tardanza = int(diferencia.total_seconds() / 60)
-            
             if minutos_tardanza > 5:
-                 estado_id = 2
-                 
+                 estado_id = 2 # 'Atraso'
+
+        # 3. Actualizar el registro
         registro.Hora_llegada_real = hora_actual
         registro.Minutos_tardanza = minutos_tardanza
         registro.ID_estado = Estado.objects.get(ID_estado=estado_id) 
         registro.save()
+        
+        messages.success(request, f"✅ Llegada registrada: {persona.Nombre}. Estado: {registro.ID_estado.Nombre_estado}.")
+        
+        # Redirigir al perfil para que vea el registro actualizado
+        return redirect('mi_perfil') 
 
-        messages.success(request, f"✅ Asistencia registrada para {persona.Nombre} {persona.Apellido}. Estado: {registro.ID_estado.Nombre_estado}.")
+    except Exception:
+        messages.error(request, "Error interno al procesar el registro de asistencia.")
         return redirect('mi_perfil')
-    
-    return render(request, 'turnos/registrar_asistencia.html', context)

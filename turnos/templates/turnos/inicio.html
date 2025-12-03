@@ -8,13 +8,13 @@
         <div class="card" style="flex: 1; margin-right: 15px; border-left: 5px solid #007bff;">
             <h3>{{ saludo }}, {{ nombre_usuario }}</h3>
             <p style="font-size: 1.2em; margin: 5px 0; font-weight: bold;">
-                {{ hora_actual|date:"H:i" }} {{ hora_actual|date:"j" }} de {{ hora_actual|date:"F" }} de {{ hora_actual|date:"Y" }}
+                {{ hora_actual|date:"H:i," }} {{ hora_actual|date:"j" }} de {{ hora_actual|date:"F" }} de {{ hora_actual|date:"Y" }}
             </p>
 
             {% if user.is_authenticated %}
                 <div style="margin-top: 15px;">
-                    <a href="{% url 'registrar_asistencia' %}" style="display: inline-block; padding: 8px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
-                        Registrar Mi Llegada
+                    <a href="{% url 'registrar_asistencia_logueado' %}" style="display: inline-block; padding: 8px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+    Registrar Mi Llegada
                     </a>
                 </div>
             {% endif %}

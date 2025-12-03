@@ -42,11 +42,14 @@
                     <td>{{ registro.Fecha|date:"d M Y" }}</td>
                     <td>{{ registro.ID_turno.Tipo_turno }}</td>
                     <td>
-                        {{ registro.ID_estado.Nombre_estado }}
-                        {% if registro.ID_estado.Nombre_estado == 'Atraso' %} 
-                            <span class="atraso" style="color: orange; font-weight: bold;">🚨</span>
+                        {% if registro.ID_estado.Nombre_estado == 'Normal' %}
+                            <span class="status-normal">Normal</span>
+                        {% elif registro.ID_estado.Nombre_estado == 'Atraso' %}
+                            <span class="status-atraso">Atraso 🚨</span>
                         {% elif registro.ID_estado.Nombre_estado == 'Ausente' %}
-                            <span class="ausente" style="color: red; font-weight: bold;">❌</span>
+                            <span class="status-ausente">Ausente ❌</span>
+                        {% else %}
+                            {{ registro.ID_estado.Nombre_estado }}
                         {% endif %}
                     </td>
                     <td>{{ registro.ID_turno.Hora_inicio|time:"H:i" }}</td>
