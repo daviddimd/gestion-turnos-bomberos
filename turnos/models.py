@@ -48,43 +48,37 @@ class Turno(models.Model):
 
 
 class Persona(models.Model):
-    
-    # 💡 VÍNCULO ESENCIAL para el Admin Inline: Asocia el bombero a una cuenta de Login.
-    # Usamos default=1 temporalmente para las migraciones si ya tienes datos en Persona
     usuario = models.OneToOneField(
         User, 
         on_delete=models.CASCADE, 
         verbose_name="Cuenta de Usuario (Login)", 
-        default=1, # Asignación temporal para migraciones
+        default=1,
         null=True, blank=True
     ) 
-    
-    # Rut sigue siendo la Clave Primaria para mantener la estructura original
+
     Rut = models.CharField(max_length=15, primary_key=True) 
-    
     Nombre = models.CharField(max_length=100)
     Apellido = models.CharField(max_length=100)
     Telefono = models.CharField(max_length=20, null=True, blank=True)
     Email = models.EmailField(max_length=100, null=True, blank=True)
-    
-    # Claves Foráneas (FKs) — Mantienen la conexión con las tablas de catálogo
+
     ID_area = models.ForeignKey(
         'Area', 
         on_delete=models.CASCADE, 
         verbose_name="Área",
-        db_column='ID_area' # Nombre exacto de la columna en MySQL
+        db_column='ID_area' 
     )
     
     ID_cargo = models.ForeignKey(
         'Cargo', 
         on_delete=models.CASCADE, 
         verbose_name="Cargo",
-        db_column='ID_cargo' # Nombre exacto de la columna en MySQL
+        db_column='ID_cargo'
     )
     
     class Meta:
         verbose_name_plural = "Personas"
-        db_table = 'persona' # Nombre exacto de la tabla en MySQL
+        db_table = 'persona' 
 
     def __str__(self):
         return f"{self.Apellido}, {self.Nombre} ({self.Rut})"
