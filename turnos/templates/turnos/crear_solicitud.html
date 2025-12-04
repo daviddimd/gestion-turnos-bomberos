@@ -1,0 +1,21 @@
+{% extends 'turnos/base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+    
+    <div class="card" style="max-width: 600px; margin: 0 auto;">
+        <p>Utiliza este formulario para solicitar la modificación de uno de tus turnos programados.</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {{ form.as_p }}
+            
+            <button type="submit" style="background-color: #007bff; color: white; padding: 10px 15px; border: none; cursor: pointer; border-radius: 4px;">
+                Enviar Solicitud
+            </button>
+        </form>
+    </div>
+
+    <p style="margin-top: 20px; text-align: center;"><a href="{% url 'mi_perfil' %}">← Volver a Mi Perfil</a></p>
+{% endblock content %}

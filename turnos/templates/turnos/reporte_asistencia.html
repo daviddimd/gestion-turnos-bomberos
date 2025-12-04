@@ -1,8 +1,9 @@
 {% extends 'turnos/base.html' %}
-{% block title %}{{ titulo }}{% endblock %}
+{% block title %}Reporte Consolidado de Asistencia{% endblock %}
+
 {% block content %}
-<body>
-    <h1>📈 {{ titulo }}</h1>
+    
+    <h2>Resultados ({{ fecha_inicio_str }} al {{ fecha_fin_str }})</h2>
 
     <div class="filter-form">
         <form method="get" action="{% url 'reporte_asistencia' %}">
@@ -16,7 +17,14 @@
         </form>
     </div>
 
-    <h2>Resultados ({{ fecha_inicio_str }} al {{ fecha_fin_str }})</h2>
+    <style>
+        .filter-form { background-color: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .filter-form label, .filter-form input { margin-right: 10px; }
+        .data-center { text-align: center; font-weight: bold; }
+        .normal { color: green; }
+        .atraso { color: orange; }
+        .ausente { color: red; }
+    </style>
     
     {% if reporte_consolidado %}
         <table>
@@ -38,16 +46,17 @@
                 {% for item in reporte_consolidado %}
                 <tr>
                     <td>
-                        <a href="{% url 'detalle_personal' rut=item.persona.Rut %}">
-                            {{ item.persona.Nombre }} {{ item.persona.Apellido }}
+                        <a href="{% url 'detalle_personal' rut=item.Rut %}">
+                            {{ item.Nombre }} {{ item.Apellido }}
                         </a>
                     </td>
-                    <td>{{ item.persona.ID_cargo.Nombre_cargo }} / {{ item.persona.ID_area.Nombre_area }}</td>
-                    <td class="data-center">{{ item.stats.total_turnos }}</td>
-                    <td class="data-center normal">{{ item.stats.normal }}</td>
-                    <td class="data-center atraso">{{ item.stats.atraso }}</td>
-                    <td class="data-center ausente">{{ item.stats.ausente }}</td>
-                    <td class="data-center">{{ item.stats.minutos_tardanza_total|default:"0" }}</td>
+                    <td>{{ item.ID_cargo.Nombre_cargo }} / {{ item.ID_area.Nombre_area }}</td>
+                    
+                    <td class="data-center">{{ item.total_turnos }}</td>
+                    <td class="data-center normal">{{ item.normal }}</td>
+                    <td class="data-center atraso">{{ item.atraso }}</td>
+                    <td class="data-center ausente">{{ item.ausente }}</td>
+                    <td class="data-center">{{ item.minutos_tardanza_total|default:"0" }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -56,5 +65,4 @@
         <p>No se encontraron registros de turnos en el rango seleccionado.</p>
     {% endif %}
     
-    <p style="margin-top: 20px;"><a href="{% url 'inicio' %}">← Volver al Panel de Inicio</a></p>
 {% endblock content %}

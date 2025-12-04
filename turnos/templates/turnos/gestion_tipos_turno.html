@@ -1,0 +1,56 @@
+{% extends 'turnos/base.html' %}
+{% block title %}Gestión de Tipos de Turnos{% endblock %}
+
+{% block content %}
+    
+    <h2>{% if modo_edicion %}Editar Tipo de Turno{% else %}Crear Nuevo Tipo de Turno{% endif %}</h2>
+
+    <div class="card" style="max-width: 500px; margin-bottom: 30px;">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            
+            <button type="submit" style="background-color: #28a745; color: white; padding: 10px 15px; border: none; cursor: pointer;">
+                {% if modo_edicion %}Guardar Cambios{% else %}Crear Turno{% endif %}
+            </button>
+            
+            {% if modo_edicion %}
+                <a href="{% url 'gestion_tipos_turno' %}" style="margin-left: 10px; color: #555; text-decoration: none;">Cancelar Edición</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <h2>Tipos de Turnos Actuales</h2>
+    {% if turnos_existentes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo de Turno</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for turno in turnos_existentes %}
+                <tr>
+                    <td>{{ turno.Tipo_turno }}</td>
+                    <td>{{ turno.Hora_inicio|time:"H:i" }}</td>
+                    <td>{{ turno.Hora_fin|time:"H:i" }}</td>
+                    <td>
+                        <a href="{% url 'editar_tipo_turno' id_turno=turno.ID_turno %}" style="color: #007bff;">[Editar]</a>
+                        <form method="post" action="{% url 'eliminar_tipo_turno' id_turno=turno.ID_turno %}" style="display: inline;" 
+                              onsubmit="return confirm('¿Está seguro de eliminar {{ turno.Tipo_turno }}? Se borrarán todos los registros de asistencia vinculados.');">
+                            {% csrf_token %}
+                            <button type="submit" style="background: none; border: none; color: red; cursor: pointer; padding: 0; margin-left: 10px;">[Eliminar]</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay tipos de turnos definidos. Cree uno arriba.</p>
+    {% endif %}
+
+{% endblock content %}

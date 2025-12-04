@@ -8,19 +8,29 @@
         <div class="card" style="flex: 1; margin-right: 15px; border-left: 5px solid #007bff;">
             <h3>{{ saludo }}, {{ nombre_usuario }}</h3>
             <p style="font-size: 1.2em; margin: 5px 0; font-weight: bold;">
-                {{ hora_actual|date:"H:i," }} {{ hora_actual|date:"j" }} de {{ hora_actual|date:"F" }} de {{ hora_actual|date:"Y" }}
+                {{ hora_actual|date:"H:i" }} {{ hora_actual|date:"j" }} de {{ hora_actual|date:"F" }} de {{ hora_actual|date:"Y" }}
             </p>
 
             {% if user.is_authenticated %}
-                <div style="margin-top: 15px;">
-                    <a href="{% url 'registrar_asistencia_logueado' %}" style="display: inline-block; padding: 8px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
-    Registrar Mi Llegada
-                    </a>
+                <div style="margin-top: 15px; display: flex; align-items: center; justify-content: space-between;">
+                    
+                    <span class="estado-{{ estado_operador.clase }}">
+                        {{ estado_operador.mensaje|safe }}
+                    </span>
+
+                    {% if estado_operador.mostrar_boton %}
+                        <a href="{% url 'registrar_asistencia_logueado' %}" 
+                           style="display: inline-block; padding: 10px 18px; 
+                                  background-color: #007bff; color: white; 
+                                  text-decoration: none; border-radius: 4px; font-weight: bold;">
+                            ✅ Registrar Llegada
+                        </a>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>
         
-        <div class="card" style="flex: 1; border-left: 5px solid #cc0000;">
+        <div class="card" style="flex: 1; margin-right: 15px; border-left: 5px solid #cc0000;">
             <h3>➡️ Próximo Turno Programado</h3>
             {% if siguiente_turno %}
                 <p style="font-size: 1.2em; margin: 5px 0;">
@@ -34,6 +44,27 @@
                 <p style="font-size: 1em; color: #999;">No hay turnos programados pendientes para hoy.</p>
             {% endif %}
         </div>
+
+        {% if user.is_superuser or perms.turnos.view_solicitudcambio %}
+            <div class="card" style="flex: 1; border-left: 5px solid orange;">
+                <h3>🔔 Solicitudes Pendientes</h3>
+                {% if solicitudes_pendientes > 0 %}
+                    <p style="font-size: 1.2em; margin: 5px 0; color: red; font-weight: bold;">
+                        Tienes {{ solicitudes_pendientes }} PENDIENTES DE REVISIÓN
+                    </p>
+                    <p style="margin: 0;">
+                        <a href="{% url 'gestionar_solicitudes' %}" style="color: blue; text-decoration: none;">
+                            → Ir a Gestión de Solicitudes
+                        </a>
+                    </p>
+                {% else %}
+                    <p style="font-size: 1.2em; margin: 5px 0; color: green;">
+                        No hay solicitudes pendientes.
+                    </p>
+                {% endif %}
+            </div>
+        {% endif %}
+
     </div>
     
     <div class="card">
@@ -60,7 +91,15 @@
                                 {{ registro.Rut.Nombre }} {{ registro.Rut.Apellido }}
                             </a>
                         </td>
-                        <td>{{ registro.ID_estado.Nombre_estado }}</td>
+                        <td>
+                            <span style="font-weight: bold; color: 
+                                {% if registro.ID_estado.ID_estado == 1 %}green
+                                {% elif registro.ID_estado.ID_estado == 2 %}orange
+                                {% else %}gray
+                                {% endif %};">
+                                {{ registro.ID_estado.Nombre_estado }}
+                            </span>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

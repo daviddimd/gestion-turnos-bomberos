@@ -1,25 +1,75 @@
 {% extends 'turnos/base.html' %}
 {% block title %}{{ titulo }}{% endblock %}
+
 {% block content %}
-<body>
-    <h1>👤 {{ titulo }}</h1>
     
-    <div class="info-card">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="card mensaje success" style="background-color: #d4edda; color: #155724; border-color: #c3e6cb;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card info-card">
         <h3>Mis Datos</h3>
-        <p><strong>Nombre de Usuario (RUT):</strong> {{ user.username }}</p>
         <p><strong>Nombre Completo:</strong> {{ persona.Nombre }} {{ persona.Apellido }}</p>
+        <p><strong>RUT:</strong> {{ persona.Rut }}</p>
         <p><strong>Área:</strong> {{ persona.ID_area.Nombre_area }}</p>
         <p><strong>Cargo:</strong> {{ persona.ID_cargo.Nombre_cargo }}</p>
     </div>
 
-    <h2>Mi Historial de Asistencia (Total: {{ historial_turnos|length }})</h2>
-    
+    <div style="margin-bottom: 30px;">
+        <a href="{% url 'crear_solicitud_cambio' %}" 
+           style="background-color: #007bff; color: white; padding: 10px 18px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block;">
+            🔄 Solicitar Cambio de Turno
+        </a>
+    </div>
+
+    <h2>Mis Solicitudes de Cambio (Historial)</h2>
+    <div class="card">
+        {% if solicitudes_del_usuario %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Turno Solicitado</th>
+                        <th>Fecha Solicitud</th>
+                        <th>Razón</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for solicitud in solicitudes_del_usuario %}
+                    <tr>
+                        <td>{{ solicitud.registro_turno }}</td>
+                        <td>{{ solicitud.fecha_solicitud|date:"d M Y H:i" }}</td>
+                        <td>{{ solicitud.razon|truncatechars:50 }}</td>
+                        <td>
+                            <span style="font-weight: bold; color: 
+                                {% if solicitud.estado == 'Aceptada' %}green
+                                {% elif solicitud.estado == 'Rechazada' %}red
+                                {% else %}orange
+                                {% endif %};">
+                                {{ solicitud.get_estado_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No tienes solicitudes de cambio registradas.</p>
+        {% endif %}
+    </div>
+
+
+    <h2 style="margin-top: 30px;">Mi Historial de Asistencia</h2>
     {% if historial_turnos %}
         <table>
             <thead>
                 <tr>
                     <th>Fecha</th>
-                    <th>Tipo de Turno</th>
+                    <th>Turno</th>
                     <th>Estado de Asistencia</th>
                     <th>Hora de Llegada Real</th>
                     <th>Tardanza (Min)</th>
@@ -31,12 +81,9 @@
                     <td>{{ registro.Fecha|date:"d M Y" }}</td>
                     <td>{{ registro.ID_turno.Tipo_turno }}</td>
                     <td>
-                        {{ registro.ID_estado.Nombre_estado }}
-                        {% if registro.ID_estado.Nombre_estado == 'Atraso' %} 
-                            <span class="atraso">🚨</span>
-                        {% elif registro.ID_estado.Nombre_estado == 'Ausente' %}
-                            <span class="ausente">❌</span>
-                        {% endif %}
+                        <span class="status-{% if registro.ID_estado.ID_estado == 1 %}normal{% elif registro.ID_estado.ID_estado == 2 %}atraso{% else %}ausente{% endif %}">
+                            {{ registro.ID_estado.Nombre_estado }}
+                        </span>
                     </td>
                     <td>{% if registro.Hora_llegada_real %}{{ registro.Hora_llegada_real|time:"H:i" }}{% else %}N/A{% endif %}</td>
                     <td>{% if registro.Minutos_tardanza %}{{ registro.Minutos_tardanza }}{% else %}0{% endif %}</td>
@@ -48,5 +95,10 @@
         <p>No tienes registros de turnos en el sistema.</p>
     {% endif %}
 
-    <p style="margin-top: 20px;"><a href="{% url 'logout' %}">Cerrar Sesión</a></p>
+    <style>
+        .info-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; background-color: #f9f9f9; }
+        .status-normal { color: green; font-weight: bold; }
+        .status-atraso { color: orange; font-weight: bold; }
+        .status-ausente { color: red; font-weight: bold; }
+    </style>
 {% endblock content %}

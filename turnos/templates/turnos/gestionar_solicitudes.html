@@ -1,0 +1,51 @@
+{% extends 'turnos/base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+    
+    <h2>Pendientes de Aprobación ({{ solicitudes_pendientes|length }})</h2>
+    
+    {% if solicitudes_pendientes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Solicitante</th>
+                    <th>Turno Programado</th>
+                    <th>Fecha Solicitud</th>
+                    <th>Razón</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for solicitud in solicitudes_pendientes %}
+                <tr>
+                    <td>{{ solicitud.persona_solicitante.Nombre }} {{ solicitud.persona_solicitante.Apellido }}</td>
+                    <td>{{ solicitud.registro_turno.ID_turno.Tipo_turno }} ({{ solicitud.registro_turno.Fecha|date:"d M Y" }})</td>
+                    <td>{{ solicitud.fecha_solicitud|date:"d M Y H:i" }}</td>
+                    <td>{{ solicitud.razon }}</td>
+                    <td>
+                        <form method="post" action="{% url 'procesar_solicitud' id_solicitud=solicitud.id accion='aceptar' %}" style="display: inline;" onsubmit="return confirm('¿Aprobar esta solicitud?');">
+                            {% csrf_token %}
+                            <button type="submit" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Aprobar</button>
+                        </form>
+                        <form method="post" action="{% url 'procesar_solicitud' id_solicitud=solicitud.id accion='rechazar' %}" style="display: inline;" onsubmit="return confirm('¿Rechazar esta solicitud?');">
+                            {% csrf_token %}
+                            <button type="submit" style="background-color: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Rechazar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay solicitudes pendientes de gestión.</p>
+    {% endif %}
+
+    <h2 style="margin-top: 50px;">Historial de Solicitudes</h2>
+    
+    {% if solicitudes_historicas %}
+    {% else %}
+    <p>No hay historial.</p>
+    {% endif %}
+
+{% endblock content %}
