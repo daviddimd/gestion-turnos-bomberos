@@ -1,171 +1,72 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-ESTADO_SOLICITUD = (
-    ('Pendiente', 'En Proceso'),
-    ('Aceptada', 'Aceptada'),
-    ('Rechazada', 'Rechazada'),
-)
-
 class Area(models.Model):
     ID_area = models.AutoField(primary_key=True)
-    Nombre_area = models.CharField(max_length=100)
-
+    Nombre_area = models.CharField(max_length=50)
+    def __str__(self): return self.Nombre_area
     class Meta:
-        verbose_name_plural = "Áreas"
         db_table = 'area'
-
-    def __str__(self):
-        return self.Nombre_area
-
+    
 class Cargo(models.Model):
     ID_cargo = models.AutoField(primary_key=True)
-    Nombre_cargo = models.CharField(max_length=100)
-
+    Nombre_cargo = models.CharField(max_length=50)
+    def __str__(self): return self.Nombre_cargo
     class Meta:
-        verbose_name_plural = "Cargos"
         db_table = 'cargo'
-
-    def __str__(self):
-        return self.Nombre_cargo
-
-class Estado(models.Model):
-    ID_estado = models.AutoField(primary_key=True)
-    Nombre_estado = models.CharField(max_length=100)
-
-    class Meta:
-        db_table = 'estado'
-
-    def __str__(self):
-        return self.Nombre_estado
 
 class Turno(models.Model):
     ID_turno = models.AutoField(primary_key=True)
-    Tipo_turno = models.CharField(max_length=100)
+    Tipo_turno = models.CharField(max_length=50)
     Hora_inicio = models.TimeField()
     Hora_fin = models.TimeField()
-
+    Duracion_horas = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    def __str__(self): return f"{self.Tipo_turno} ({self.Hora_inicio.strftime('%H:%M')} - {self.Hora_fin.strftime('%H:%M')})"
     class Meta:
-        verbose_name = "Tipo de Horario Fijo"
-        verbose_name_plural = "Tipos de Horario Fijo"
-        db_table = 'turno'
+        db_table = 'turnos_turno'
 
-    def __str__(self):
-        return self.Tipo_turno
+class Estado(models.Model):
+    ID_estado = models.AutoField(primary_key=True)
+    Nombre_estado = models.CharField(max_length=50)
+    def __str__(self): return self.Nombre_estado
+    class Meta:
+        db_table = 'estado'
 
 class Persona(models.Model):
-    usuario = models.OneToOneField(
-        User, 
-        on_delete=models.CASCADE, 
-        verbose_name="Cuenta de Usuario (Login)", 
-        null=True, blank=True
-    ) 
-    
-    Rut = models.CharField(max_length=15, primary_key=True) 
-    Nombre = models.CharField(max_length=100)
-    Apellido = models.CharField(max_length=100)
-    Telefono = models.CharField(max_length=20, null=True, blank=True)
-    Email = models.EmailField(max_length=100, null=True, blank=True)
-    
-    ID_area = models.ForeignKey(
-        'Area', 
-        on_delete=models.CASCADE, 
-        verbose_name="Área",
-        db_column='ID_area'
-    )
-    
-    ID_cargo = models.ForeignKey(
-        'Cargo', 
-        on_delete=models.CASCADE, 
-        verbose_name="Cargo",
-        db_column='ID_cargo'
-    )
-    
+    Rut = models.CharField(max_length=15, primary_key=True)
+    Nombre = models.CharField(max_length=50)
+    Apellido = models.CharField(max_length=50)
+    Telefono = models.CharField(max_length=15, blank=True, null=True)
+    Email = models.EmailField(unique=True, blank=True, null=True)
+    Fecha_ingreso = models.DateField()
+    ID_area = models.ForeignKey(Area, on_delete=models.PROTECT)
+    ID_cargo = models.ForeignKey(Cargo, on_delete=models.PROTECT)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='persona', null=True)
+    def __str__(self): return f"{self.Nombre} {self.Apellido} ({self.Rut})"
     class Meta:
-        verbose_name = "Personal de Bomberos"
-        verbose_name_plural = "Personal de Bomberos"
-        db_table = 'persona'
-
-    def __str__(self):
-        return f"{self.Apellido}, {self.Nombre} ({self.Rut})"
+        db_table = 'persona' 
 
 class RegistroTurno(models.Model):
     ID_registro = models.AutoField(primary_key=True)
     Fecha = models.DateField()
-    
-    Rut = models.ForeignKey(
-        'Persona', 
-        on_delete=models.CASCADE, 
-        verbose_name="Bombero",
-        db_column='Rut'
-    )
-    
-    ID_turno = models.ForeignKey(
-        'Turno', 
-        on_delete=models.CASCADE, 
-        verbose_name="Turno Programado",
-        db_column='ID_turno'
-    )
-    
-    ID_estado = models.ForeignKey(
-        'Estado', 
-        on_delete=models.CASCADE, 
-        verbose_name="Estado de Asistencia",
-        db_column='ID_estado'
-    )
-    
-    Hora_llegada_real = models.TimeField(null=True, blank=True)
-    Minutos_tardanza = models.IntegerField(null=True, blank=True)
-
+    Hora_llegada_real = models.TimeField(blank=True, null=True)
+    Minutos_tardanza = models.IntegerField(default=0)
+    Rut = models.ForeignKey(Persona, on_delete=models.PROTECT, db_column='Rut_id')
+    ID_turno = models.ForeignKey(Turno, on_delete=models.CASCADE, db_column='ID_turno_id')
+    ID_estado = models.ForeignKey(Estado, on_delete=models.PROTECT, db_column='ID_estado_id')
+    def __str__(self): return f"{self.Rut.Apellido} - {self.ID_turno.Tipo_turno} ({self.Fecha})"
     class Meta:
-        verbose_name = "Asistencia Programada"
-        verbose_name_plural = "Asistencia Programada"
         db_table = 'registro_turno'
-        
-    def __str__(self):
-        return f"{self.ID_turno.Tipo_turno} ({self.ID_turno.Hora_inicio.strftime('%H:%M')} - {self.ID_turno.Hora_fin.strftime('%H:%M')}) | {self.Fecha.strftime('%d/%m/%Y')} | {self.Rut.Nombre} {self.Rut.Apellido}"
-
+        unique_together = (('Rut', 'Fecha'),)
 
 class SolicitudCambio(models.Model):
-    
-    persona_solicitante = models.ForeignKey(
-        'Persona', 
-        on_delete=models.CASCADE, 
-        verbose_name="Solicitante",
-        db_column='Rut_Solicitante',
-    )
-    
-    registro_turno = models.ForeignKey(
-        'RegistroTurno', 
-        on_delete=models.CASCADE, 
-        verbose_name="Turno a Cambiar",
-        help_text="Selecciona el turno programado que deseas modificar.",
-    )
-    
-    razon = models.TextField(
-        verbose_name="Razón de la Solicitud",
-        help_text="Explica brevemente por qué necesitas el cambio de turno.",
-    )
-    
-    estado = models.CharField(
-        max_length=10, 
-        choices=ESTADO_SOLICITUD, 
-        default='Pendiente',
-        verbose_name="Estado de la Solicitud",
-    )
-    
+    ESTADOS_SOLICITUD = [('Pendiente', 'Pendiente'), ('Aceptada', 'Aceptada'), ('Rechazada', 'Rechazada')]
+    persona_solicitante = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='solicitudes_enviadas')
+    registro_turno = models.ForeignKey(RegistroTurno, on_delete=models.SET_NULL, null=True, related_name='solicitudes_de_cambio')
+    razon = models.TextField(verbose_name="Razón de la solicitud")
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
-    
-    autorizado_por = models.ForeignKey(
-        User, 
-        on_delete=models.SET_NULL, 
-        null=True, blank=True, 
-        verbose_name="Autorizado por",
-    )
-
+    estado = models.CharField(max_length=10, choices=ESTADOS_SOLICITUD, default='Pendiente')
+    autorizado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='solicitudes_procesadas')
+    def __str__(self): return f"Solicitud {self.id} de {self.persona_solicitante.Apellido}"
     class Meta:
-        verbose_name = "Flujo de Cambio"
-        verbose_name_plural = "Flujo de Cambio de Turno"
-
-    def __str__(self):
-        return f"Solicitud de {self.persona_solicitante.Nombre} - {self.estado}"
+        db_table = 'turnos_solicitudcambio'

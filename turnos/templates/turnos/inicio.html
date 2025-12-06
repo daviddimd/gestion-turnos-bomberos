@@ -8,7 +8,7 @@
         <div class="card" style="flex: 1; margin-right: 15px; border-left: 5px solid #007bff;">
             <h3>{{ saludo }}, {{ nombre_usuario }}</h3>
             <p style="font-size: 1.2em; margin: 5px 0; font-weight: bold;">
-                {{ hora_actual|date:"H:i" }} {{ hora_actual|date:"j" }} de {{ hora_actual|date:"F" }} de {{ hora_actual|date:"Y" }}
+                {{ hora_actual|date:"H:i, " }} {{ hora_actual|date:"j" }} de {{ hora_actual|date:"F" }} de {{ hora_actual|date:"Y" }}
             </p>
 
             {% if user.is_authenticated %}
@@ -23,7 +23,7 @@
                            style="display: inline-block; padding: 10px 18px; 
                                   background-color: #007bff; color: white; 
                                   text-decoration: none; border-radius: 4px; font-weight: bold;">
-                            ✅ Registrar Llegada
+                            Registrar Llegada
                         </a>
                     {% endif %}
                 </div>
@@ -31,7 +31,7 @@
         </div>
         
         <div class="card" style="flex: 1; margin-right: 15px; border-left: 5px solid #cc0000;">
-            <h3>➡️ Próximo Turno Programado</h3>
+            <h3>Próximo Turno Programado</h3>
             {% if siguiente_turno %}
                 <p style="font-size: 1.2em; margin: 5px 0;">
                     <strong>Tipo:</strong> {{ siguiente_turno.ID_turno.Tipo_turno }}
@@ -68,7 +68,7 @@
     </div>
     
     <div class="card">
-        <h3>📅 Turnos Programados para Hoy ({{ fecha_hoy|date:"d M Y" }} - {{ registros_hoy|length }} registros)</h3>
+        <h3>Turnos Programados para Hoy ({{ fecha_hoy|date:"d M Y" }} - {{ registros_hoy|length }} registros)</h3>
         {% if registros_hoy %}
             <table>
                 <thead>
@@ -110,7 +110,7 @@
     </div>
 
     <div class="card" style="margin-top: 25px;">
-        <h3>👥 Personal Registrado en el Sistema ({{ personal|length }} personas)</h3>
+        <h3>Personal Registrado en el Sistema ({{ personal|length }} personas)</h3>
         <table>
             <thead>
                 <tr>

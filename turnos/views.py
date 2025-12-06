@@ -38,7 +38,6 @@ def inicio_gestion(request):
     solicitudes_pendientes = 0
     estado_operador = {'mensaje': "Error de perfil: El usuario logueado no tiene un perfil de bombero asociado (Persona).", 'clase': 'error', 'minutos': 0, 'mostrar_boton': False}
 
-    # 💡 CORRECCIÓN: Verificar PERMISO en lugar de Staff
     if request.user.is_superuser or request.user.has_perm('turnos.view_solicitudcambio'):
         solicitudes_pendientes = SolicitudCambio.objects.filter(estado='Pendiente').count()
 
@@ -50,47 +49,48 @@ def inicio_gestion(request):
             ID_turno__Hora_inicio__gte=hora_actual_time
         ).order_by('ID_turno__Hora_inicio').first()
         
-        registro_ya_hecho = registros_hoy.filter(Rut=operador_persona, Hora_llegada_real__isnull=False).exists()
+        turnos_del_dia = registros_hoy.filter(Rut=operador_persona)
         
-        if registro_ya_hecho:
-            estado_operador['mensaje'] = "✅ Asistencia registrada para hoy. ¡Gracias!"
-            estado_operador['clase'] = 'exito'
-            estado_operador['mostrar_boton'] = False
+        turno_relevante = turnos_del_dia.filter(
+            Hora_llegada_real__isnull=True
+        ).order_by('ID_turno__Hora_inicio').first()
+        
+        if turno_relevante:
+            hora_inicio = turno_relevante.ID_turno.Hora_inicio
             
-        else:
-            turno_relevante = registros_hoy.filter(
-                Rut=operador_persona,
-                Hora_llegada_real__isnull=True
-            ).order_by('ID_turno__Hora_inicio').first()
+            inicio_dt_puro = datetime.datetime.combine(hoy, hora_inicio) 
+            ahora_dt_puro = datetime.datetime.now()
             
-            if turno_relevante:
-                hora_inicio = turno_relevante.ID_turno.Hora_inicio
-                inicio_dt = datetime.datetime.combine(hoy, hora_inicio)
-                ahora_dt = datetime.datetime.combine(hoy, hora_actual_time)
+            estado_operador['mostrar_boton'] = True 
+            
+            if ahora_dt_puro <= inicio_dt_puro:
+                diferencia_hasta_inicio = inicio_dt_puro - ahora_dt_puro
+                minutos_restantes = int(diferencia_hasta_inicio.total_seconds() / 60)
                 
-                if ahora_dt <= inicio_dt:
-                    diferencia_hasta_inicio = inicio_dt - ahora_dt
-                    minutos_restantes = int(diferencia_hasta_inicio.total_seconds() / 60)
-                    
-                    estado_operador['mensaje'] = f"Estás a tiempo. Tu turno comienza en {minutos_restantes} min ({hora_inicio.strftime('%H:%M')})."
-                    estado_operador['clase'] = 'normal'
-                    estado_operador['mostrar_boton'] = True
-                else:
-                    diferencia = ahora_dt - inicio_dt
-                    minutos_tardanza = int(diferencia.total_seconds() / 60)
-                    
-                    if minutos_tardanza < 300:
-                        estado_operador['mensaje'] = f"¡Alerta! Te encuentras con <strong>atraso de {minutos_tardanza} min</strong>."
-                        estado_operador['clase'] = 'alerta'
-                        estado_operador['mostrar_boton'] = True
-                    else:
-                        estado_operador['mensaje'] = f"⚠️ Tienes un turno pendiente de {hora_inicio.strftime('%H:%M')} que no has registrado. Regístrelo."
-                        estado_operador['clase'] = 'error'
-                        estado_operador['mostrar_boton'] = True
+                estado_operador['mensaje'] = f"Estás a tiempo. Tu turno comienza en {minutos_restantes} min ({hora_inicio.strftime('%H:%M')})."
+                estado_operador['clase'] = 'normal'
             else:
-                estado_operador['mensaje'] = "No tienes turno programado pendiente para registrar hoy."
-                estado_operador['clase'] = 'info'
-                estado_operador['mostrar_boton'] = False
+                diferencia = ahora_dt_puro - inicio_dt_puro
+                minutos_tardanza = int(diferencia.total_seconds() / 60)
+                
+                estado_operador['mostrar_boton'] = True
+                
+                if minutos_tardanza < 300:
+                    estado_operador['mensaje'] = f"¡Alerta! Te encuentras con <strong>atraso de {minutos_tardanza} min</strong>. Tu turno comenzó a las {hora_inicio.strftime('%H:%M')}."
+                    estado_operador['clase'] = 'alerta'
+                else:
+                    estado_operador['mensaje'] = f"⚠️ Tienes un turno pendiente de {hora_inicio.strftime('%H:%M')} que no has registrado. Regístrelo."
+                    estado_operador['clase'] = 'error'
+        
+        elif turnos_del_dia.exists():
+            estado_operador['mensaje'] = "Asistencia registrada para hoy. ¡Gracias!"
+            estado_operador['clase'] = 'exito'
+            estado_operador['mostrar_boton'] = False 
+
+        else:
+            estado_operador['mensaje'] = "No tienes turno programado pendiente para registrar hoy."
+            estado_operador['clase'] = 'info'
+            estado_operador['mostrar_boton'] = False
 
 
     except Persona.DoesNotExist:
@@ -127,7 +127,6 @@ def detalle_personal(request, rut):
     return render(request, 'turnos/detalle_personal.html', context)
 
 @login_required
-@permission_required('turnos.view_registroturno', raise_exception=True)
 def programacion_semanal(request, fecha_str=None):
     
     if fecha_str:
@@ -197,20 +196,22 @@ def registrar_asistencia(request):
             return render(request, 'turnos/registrar_asistencia.html', context)
         
         hoy = datetime.date.today()
-        registro = RegistroTurno.objects.filter(Rut=persona, Fecha=hoy).first()
+        
+        registro = RegistroTurno.objects.filter(Rut=persona, Fecha=hoy, Hora_llegada_real__isnull=True).order_by('ID_turno__Hora_inicio').first()
 
         if not registro:
-            context['mensaje'] = f"Error: No hay turno programado para {persona.Nombre} hoy ({hoy})."
+            context['mensaje'] = f"Error: No hay turno programado pendiente para {persona.Nombre} hoy ({hoy})."
             context['clase'] = 'error'
             return render(request, 'turnos/registrar_asistencia.html', context)
         
         ZONA_HORARIA = pytz.timezone('America/Santiago') 
-        hora_actual = datetime.datetime.now(ZONA_HORARIA).time()
+        hora_actual = datetime.datetime.now().time()
         hora_inicio_programada = registro.ID_turno.Hora_inicio
         
         llegada = datetime.datetime.combine(hoy, hora_actual)
         programada = datetime.datetime.combine(hoy, hora_inicio_programada)
-        diferencia = llegada - programada
+        
+        diferencia = llegada.replace(tzinfo=None) - programada.replace(tzinfo=None)
 
         minutos_tardanza = 0
         estado_id = 1 
@@ -219,16 +220,16 @@ def registrar_asistencia(request):
             minutos_tardanza = int(diferencia.total_seconds() / 60)
             
             if minutos_tardanza > 5:
-                 estado_id = 2
+                estado_id = 2
             else:
-                 estado_id = 1
+                estado_id = 1
 
         registro.Hora_llegada_real = hora_actual
         registro.Minutos_tardanza = minutos_tardanza
         registro.ID_estado = Estado.objects.get(ID_estado=estado_id) 
         registro.save()
         
-        messages.success(request, f"✅ Asistencia registrada para {persona.Nombre} {persona.Apellido}. Estado: {registro.ID_estado.Nombre_estado}.")
+        messages.success(request, f"Asistencia registrada para {persona.Nombre} {persona.Apellido}. Estado: {registro.ID_estado.Nombre_estado}.")
         return redirect('mi_perfil') 
     
     return render(request, 'turnos/registrar_asistencia.html', context)
@@ -241,19 +242,21 @@ def registrar_asistencia_logueado(request):
     
     try:
         persona = get_object_or_404(Persona, Rut=rut_usar)
-        registro = RegistroTurno.objects.filter(Rut=persona, Fecha=hoy).first()
+        
+        registro = RegistroTurno.objects.filter(Rut=persona, Fecha=hoy, Hora_llegada_real__isnull=True).order_by('ID_turno__Hora_inicio').first()
 
         if not registro:
-            messages.error(request, f"Error: No hay turno programado para {persona.Nombre} hoy ({hoy}).")
+            messages.error(request, f"Error: No hay turno programado pendiente para {persona.Nombre} hoy ({hoy}).")
             return redirect('mi_perfil') 
         
         ZONA_HORARIA = pytz.timezone('America/Santiago') 
-        hora_actual = datetime.datetime.now(ZONA_HORARIA).time()
+        hora_actual = datetime.datetime.now().time()
         hora_inicio_programada = registro.ID_turno.Hora_inicio
         
         llegada = datetime.datetime.combine(hoy, hora_actual)
         programada = datetime.datetime.combine(hoy, hora_inicio_programada)
-        diferencia = llegada - programada
+        
+        diferencia = llegada.replace(tzinfo=None) - programada.replace(tzinfo=None)
 
         minutos_tardanza = 0
         estado_id = 1 
@@ -261,14 +264,14 @@ def registrar_asistencia_logueado(request):
         if diferencia > datetime.timedelta(minutes=0):
             minutos_tardanza = int(diferencia.total_seconds() / 60)
             if minutos_tardanza > 5:
-                 estado_id = 2
+                estado_id = 2
 
         registro.Hora_llegada_real = hora_actual
         registro.Minutos_tardanza = minutos_tardanza
         registro.ID_estado = Estado.objects.get(ID_estado=estado_id) 
         registro.save()
         
-        messages.success(request, f"✅ Llegada registrada: {persona.Nombre}. Estado: {registro.ID_estado.Nombre_estado}.")
+        messages.success(request, f"Llegada registrada: {persona.Nombre}. Estado: {registro.ID_estado.Nombre_estado}.")
         
         return redirect('mi_perfil') 
 
@@ -420,7 +423,12 @@ def gestion_tipos_turno(request, id_turno=None):
     if request.method == 'POST':
         form = TurnoForm(request.POST, instance=turno_a_editar)
         if form.is_valid():
-            turno_guardado = form.save()
+            
+            turno_guardado = form.save(commit=False)
+            
+            turno_guardado.Duracion_horas = form.cleaned_data['Duracion_horas']
+            
+            turno_guardado.save()
             
             if turno_a_editar:
                 messages.success(request, f"Tipo de turno '{turno_guardado.Tipo_turno}' actualizado correctamente.")
@@ -469,24 +477,41 @@ def crear_solicitud_cambio(request):
         return redirect('mi_perfil')
 
     if request.method == 'POST':
+        
+        # 1. Obtenemos los turnos disponibles ANTES de validar el formulario (POST)
+        turnos_disponibles = RegistroTurno.objects.filter(
+            Rut=operador_persona,
+            Fecha__gte=datetime.date.today()
+        ).filter(
+            ID_estado__Nombre_estado__in=['Normal', 'Atraso']
+        ).order_by('Fecha')
+
         form = SolicitudCambioForm(request.POST)
+        
+        # 2. Asignamos la QuerySet al campo del formulario para la validación
+        form.fields['registro_turno'].queryset = turnos_disponibles
+        
         if form.is_valid():
             solicitud = form.save(commit=False)
             solicitud.persona_solicitante = operador_persona
             solicitud.save()
-            messages.success(request, "✅ Solicitud de cambio enviada. Estado: En Proceso.")
+            messages.success(request, "Solicitud de cambio enviada. Estado: En Proceso.")
             return redirect('mi_perfil') 
         else:
+            # Si falla, el mensaje de error "Revise los campos" ya se ha mostrado.
             messages.error(request, "Error al enviar la solicitud. Revise los campos.")
     
-    turnos_disponibles = RegistroTurno.objects.filter(
-        Rut=operador_persona,
-        Fecha__gte=datetime.date.today(),
-        ID_estado__Nombre_estado='Normal'
-    )
-    
-    form = SolicitudCambioForm()
-    form.fields['registro_turno'].queryset = turnos_disponibles
+    else:
+        # Método GET: Instanciamos el formulario y asignamos la QuerySet para mostrar.
+        turnos_disponibles = RegistroTurno.objects.filter(
+            Rut=operador_persona,
+            Fecha__gte=datetime.date.today()
+        ).filter(
+            ID_estado__Nombre_estado__in=['Normal', 'Atraso']
+        ).order_by('Fecha')
+        
+        form = SolicitudCambioForm()
+        form.fields['registro_turno'].queryset = turnos_disponibles
     
     context = {
         'titulo': 'Solicitar Cambio de Turno',
@@ -530,18 +555,20 @@ def procesar_solicitud(request, id_solicitud, accion):
             try:
                 registro_a_eliminar.delete() 
                 
+                solicitud.registro_turno = None 
+                
                 solicitud.estado = 'Aceptada'
                 messages.success(request, f"Solicitud ACEPTADA. El turno programado ({registro_a_eliminar.ID_turno.Tipo_turno} del {registro_a_eliminar.Fecha}) ha sido ELIMINADO automáticamente.")
             
             except Exception as e:
-                messages.error(request, f"Error fatal: No se pudo eliminar el turno. {e}")
+                messages.error(request, f"Error fatal: No se pudo eliminar el turno o actualizar la solicitud. {e}")
                 return redirect('gestionar_solicitudes')
             
         elif accion == 'rechazar':
             solicitud.estado = 'Rechazada'
             messages.warning(request, f"Solicitud de {solicitud.persona_solicitante.Apellido} RECHAZADA.")
             
-        solicitud.save()
+        solicitud.save() 
         return redirect('gestionar_solicitudes')
     
     return redirect('gestionar_solicitudes')
